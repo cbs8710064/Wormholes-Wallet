@@ -1097,7 +1097,7 @@ export default {
       const logoUrl = "eth.jpg";
       let balance = "0";
       try {
-        balance = await contactObj.contractWithSigner.balanceOf(wallet.address);
+        balance = utils.formatEther(await contactObj.contractWithSigner.balanceOf(wallet.address));
       } catch (err: any) {
         // Toast(i18n.global.t("account.importerror"));
         return Promise.reject(i18n.global.t("common.importerror"));
