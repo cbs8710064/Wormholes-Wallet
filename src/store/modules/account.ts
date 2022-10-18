@@ -1,6 +1,9 @@
 import { Toast, Notify } from "vant";
 import { ethers, utils } from "ethers";
 import BigNumber from "bignumber.js";
+import {
+  web3,
+} from "@/utils/web3";
 // @ts-ignore
 window.utils = utils;
 import {
@@ -11,6 +14,7 @@ import {
   CreateWalletByMnemonicParams,
   createRandomWallet,
 } from "@/utils/ether";
+
 import { getRandomIcon } from "@/utils/index";
 import { toRaw } from "vue";
 import { TransactionData, TransactionParams } from "./index";
@@ -23,6 +27,7 @@ import {
   NetWorkData,
   netWorklist,
   TransactionList,
+  chessIcons,
   TransactionRecord,
 } from "@/enum/network";
 // import { getEtherBalances } from "@mycrypto/eth-scan";
@@ -38,6 +43,7 @@ import { getContractAddress } from "@/http/modules/common";
 import localforage from 'localforage';
 import { useToast } from "@/plugins/toast";
 import Bignumber from 'bignumber.js'
+import { fa } from "element-plus/es/locale";
 export interface State {
   mnemonic: Mnemonic;
   path: string;
@@ -374,6 +380,20 @@ export default {
     // Delete network by ID
     DETETE_NETWORK(state: State, id: string) {
       const list = state.netWorkList.filter((item) => item.id != id);
+      // reset icon
+      list.forEach((item, idx) => {
+        item.icon = chessIcons[idx]
+      })
+      if(state.currentNetwork.id == id) {
+        list.forEach(item => {
+          if(item.isMain) {
+            item.select = true
+          } else {
+            item.select = false
+          }
+        })
+        state.currentNetwork = list[0]
+      }
       state.netWorkList = list;
     },
     // Modify network data according to ID
@@ -934,8 +954,10 @@ export default {
             address
           );
           console.log(" contract.estimate", contract, contractWithSigner);
+          
+          const amountWei = web3.utils.toWei((amount || 0) + '','ether')
           contractWithSigner.estimateGas
-            .transfer(to, amount)
+            .transfer(to, amountWei)
             .then((gas: any) => {
               const gasp = new BigNumber(gasPrice)
                 .dividedBy(1000000000)
@@ -947,7 +969,7 @@ export default {
               };
               console.log("transferParams", transferParams);
               contractWithSigner
-                .transfer(to, amount, transferParams)
+                .transfer(to, amountWei, transferParams)
                 .then((data: any) => {
                   // Add to transaction queue
                   commit("ADD_TRANACTIONLIST", JSON.parse(JSON.stringify(data)));
@@ -1178,7 +1200,7 @@ export default {
         Promise.all(plist).then((result) => {
           for (let i = 0; i < tokens.length; i++) {
             // @ts-ignore
-            tokens[i].balance = result[i].toString();
+            tokens[i].balance = result[i];
           }
         });
       }
@@ -1200,9 +1222,9 @@ export default {
           wallet.provider
         );
         const contractWithSigner = contract.connect(wallet);
-        return Promise.resolve(
-          await contractWithSigner.balanceOf(wallet.address)
-        );
+        console.warn("contractWithSigner--------------", contractWithSigner);
+        const amount = await contractWithSigner.balanceOf(wallet.address)
+        return Promise.resolve(utils.formatEther(amount));
       } catch (err) {
         return Promise.reject(err);
       }
